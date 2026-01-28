@@ -2,8 +2,7 @@ name: Release New Version
 
 on:
   push:
-    branches: [main, develop]
-  workflow_dispatch:
+    branches: [main]
 
 jobs:
   release:
