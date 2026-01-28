@@ -1,0 +1,52 @@
+name: Generate Semantic Release
+
+on:
+  workflow_call:
+    secrets:
+      github_pat:
+        description: 'GitHub Personal Access Token'
+        required: true
+    outputs:
+      release_published:
+        description: "Whether a new release was published"
+        value: ${{ jobs.generate-semantic-release.outputs.release_published }}
+      release_version:
+        description: "The semantic release version generated"
+        value: ${{ jobs.generate-semantic-release.outputs.release_version }}
+
+jobs:
+  generate-semantic-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      release_published: ${{ steps.generate-semantic-release.outputs.release_published }}
+      release_version: ${{ steps.generate-semantic-release.outputs.release_version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "lts/*"
+      - name: Cache npm global packages
+        uses: actions/cache@v4
+        id: npm-cache
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-global-semantic-release-v1
+          restore-keys: |
+            ${{ runner.os }}-npm-global-semantic-release-
+      - name: Install semantic-release
+        run: npm install -g semantic-release @semantic-release/github @semantic-release/git @semantic-release/exec
+      - name: Generate semantic release
+        id: generate-semantic-release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.github_pat }}
+      - name: Display results
+        run: |
+          echo "Release published: ${{ steps.generate-semantic-release.outputs.release_published || 'false' }}"
+          echo "Release version: ${{ steps.generate-semantic-release.outputs.release_version || 'none' }}"

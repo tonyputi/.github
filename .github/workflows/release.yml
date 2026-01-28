@@ -1,0 +1,17 @@
+name: Release New Version
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Release New Version
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    uses: ./.github/workflows/generate-semantic-release.yml
+    secrets:
+      github_pat: ${{ secrets.GH_PAT }}
