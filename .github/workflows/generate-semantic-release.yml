@@ -2,9 +2,14 @@ name: Generate Semantic Release
 
 on:
   workflow_call:
+    inputs:
+      github_app_id:
+        description: 'GitHub App ID'
+        required: true
+        type: string
     secrets:
-      github_pat:
-        description: 'GitHub Personal Access Token'
+      github_app_private_key:
+        description: 'GitHub App private key (PEM)'
         required: true
     outputs:
       release_published:
@@ -25,28 +30,72 @@ jobs:
       release_published: ${{ steps.generate-semantic-release.outputs.release_published }}
       release_version: ${{ steps.generate-semantic-release.outputs.release_version }}
     steps:
-      - uses: actions/checkout@v5
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ inputs.github_app_id }}
+          private-key: ${{ secrets.github_app_private_key }}
+          owner: ${{ github.repository_owner }}
+
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v5
+          token: ${{ steps.app-token.outputs.token }}
+      - uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
-      - name: Cache npm global packages
-        uses: actions/cache@v4
-        id: npm-cache
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-global-semantic-release-v1
-          restore-keys: |
-            ${{ runner.os }}-npm-global-semantic-release-
-      - name: Install semantic-release
-        run: npm install -g semantic-release @semantic-release/github @semantic-release/git @semantic-release/exec
+      - name: Detect plugins from config
+        id: detect
+        run: |
+          if [ -f "release.config.cjs" ]; then
+            PACKAGES=$(node -e "
+              const cfg = require('./release.config.cjs');
+              const plugins = cfg.plugins || [];
+              const names = plugins.map(p => Array.isArray(p) ? p[0] : p).filter(p => typeof p === 'string');
+              console.log(names.map(p => '--package ' + p).join(' '));
+            ")
+            echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
+          elif [ -f "release.config.js" ]; then
+            PACKAGES=$(node -e "
+              const cfg = require('./release.config.js');
+              const plugins = cfg.plugins || [];
+              const names = plugins.map(p => Array.isArray(p) ? p[0] : p).filter(p => typeof p === 'string');
+              console.log(names.map(p => '--package ' + p).join(' '));
+            ")
+            echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
+          else
+            # Fallback to default plugins for backwards compatibility
+            DEFAULT_PKGS="--package @semantic-release/commit-analyzer"
+            DEFAULT_PKGS="$DEFAULT_PKGS --package @semantic-release/release-notes-generator"
+            DEFAULT_PKGS="$DEFAULT_PKGS --package @semantic-release/github"
+            DEFAULT_PKGS="$DEFAULT_PKGS --package @semantic-release/git"
+            DEFAULT_PKGS="$DEFAULT_PKGS --package @semantic-release/exec"
+            echo "packages=$DEFAULT_PKGS" >> $GITHUB_OUTPUT
+          fi
       - name: Generate semantic release
         id: generate-semantic-release
-        run: npx semantic-release
+        run: npx --package semantic-release@25 ${{ steps.detect.outputs.packages }} semantic-release
         env:
-          GITHUB_TOKEN: ${{ secrets.github_pat }}
-      - name: Display results
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+      - name: Summary
         run: |
-          echo "Release published: ${{ steps.generate-semantic-release.outputs.release_published || 'false' }}"
-          echo "Release version: ${{ steps.generate-semantic-release.outputs.release_version || 'none' }}"
+          if [ "${{ steps.generate-semantic-release.outputs.release_published }}" = "true" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ### 🚀 Release Published
+
+          | Field      | Value                                                              |
+          |------------|--------------------------------------------------------------------|
+          | Version    | \`v${{ steps.generate-semantic-release.outputs.release_version }}\` |
+          | Repository | ${{ github.repository }}                                           |
+          | Branch     | \`${{ github.ref_name }}\`                                         |
+          EOF
+          else
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ### ℹ️ No Release
+
+          No new release was published. This could mean:
+          - No releasable commits since last version
+          - Commits don't follow conventional commit format
+          EOF
+          fi

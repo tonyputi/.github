@@ -1,0 +1,60 @@
+name: 'Lint Shell Scripts'
+description: 'Run ShellCheck on shell scripts'
+author: 'tonyputi'
+
+inputs:
+  path:
+    description: 'Path to scan'
+    required: false
+    default: '.'
+  severity:
+    description: 'Minimum severity (error, warning, info, style)'
+    required: false
+    default: 'warning'
+  exclude:
+    description: 'Comma-separated paths to exclude'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run ShellCheck
+      id: shellcheck
+      shell: bash
+      run: |
+        if ! command -v shellcheck &> /dev/null; then
+          sudo apt-get update && sudo apt-get install -y shellcheck
+        fi
+
+        EXCLUDE_ARGS=""
+        if [ -n "${{ inputs.exclude }}" ]; then
+          IFS=',' read -ra PATHS <<< "${{ inputs.exclude }}"
+          for path in "${PATHS[@]}"; do
+            EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude=$path"
+          done
+        fi
+
+        FILES=$(find ${{ inputs.path }} -type f \( -name "*.sh" -o -name "*.bash" \) 2>/dev/null || true)
+        FILE_COUNT=$(echo "$FILES" | grep -c . || echo "0")
+        echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
+
+        FAILED=0
+        if [ -n "$FILES" ]; then
+          echo "$FILES" | while read -r file; do
+            shellcheck --severity=${{ inputs.severity }} "$file" || FAILED=$((FAILED + 1))
+          done
+        fi
+
+    - name: Summary
+      if: always()
+      shell: bash
+      run: |
+        cat >> $GITHUB_STEP_SUMMARY << EOF
+        ### 🐚 ShellCheck
+
+        | Field | Value |
+        |-------|-------|
+        | Path | \`${{ inputs.path }}\` |
+        | Severity | \`${{ inputs.severity }}\` |
+        | Files | ${{ steps.shellcheck.outputs.file_count || '0' }} |
+        EOF

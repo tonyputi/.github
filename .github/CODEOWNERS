@@ -1,0 +1,7 @@
+# CODEOWNERS - defines code review requirements
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+* @tonyputi
+
+/.github/  @tonyputi
+/actions/  @tonyputi

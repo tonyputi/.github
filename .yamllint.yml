@@ -1,0 +1,25 @@
+---
+extends: default
+
+rules:
+  # GitHub Actions workflows don't require document start
+  document-start: disable
+
+  # 'on' is valid GitHub Actions trigger keyword
+  truthy:
+    allowed-values: ['true', 'false', 'on']
+
+  # GitHub Actions often requires longer lines for descriptions and commands
+  line-length:
+    max: 160
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+
+  # Allow both styles for flexibility
+  comments:
+    min-spaces-from-content: 1
+
+  # Indentation settings matching GitHub Actions conventions
+  indentation:
+    spaces: 2
+    indent-sequences: whatever

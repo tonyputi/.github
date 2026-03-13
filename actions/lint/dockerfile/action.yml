@@ -1,0 +1,71 @@
+name: 'Lint Dockerfile'
+description: 'Run Hadolint on Dockerfiles'
+author: 'tonyputi'
+
+inputs:
+  path:
+    description: 'Path to scan for Dockerfiles'
+    required: false
+    default: '.'
+  ignore:
+    description: 'Comma-separated Hadolint rules to ignore (e.g., DL3008,DL3009)'
+    required: false
+  failure_threshold:
+    description: 'Minimum severity to fail (error, warning, info, style, ignore, none)'
+    required: false
+    default: 'warning'
+  hadolint_version:
+    description: 'Hadolint version to install'
+    required: false
+    default: '2.12.0'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run Hadolint
+      id: hadolint
+      shell: bash
+      run: |
+        if ! command -v hadolint &> /dev/null; then
+          wget -qO /tmp/hadolint "https://github.com/hadolint/hadolint/releases/download/v${{ inputs.hadolint_version }}/hadolint-Linux-x86_64"
+          chmod +x /tmp/hadolint
+          sudo mv /tmp/hadolint /usr/local/bin/hadolint
+        fi
+
+        FILES=$(find ${{ inputs.path }} -type f \( -name "Dockerfile" -o -name "Dockerfile.*" -o -name "*.dockerfile" \) 2>/dev/null || true)
+        FILE_COUNT=$(echo "$FILES" | grep -c . 2>/dev/null || echo "0")
+        echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
+
+        if [ -z "$FILES" ] || [ "$FILE_COUNT" -eq 0 ]; then
+          echo "No Dockerfiles found in ${{ inputs.path }}, skipping"
+          echo "file_count=0" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        IGNORE_ARGS=""
+        if [ -n "${{ inputs.ignore }}" ]; then
+          IFS=',' read -ra RULES <<< "${{ inputs.ignore }}"
+          for rule in "${RULES[@]}"; do
+            IGNORE_ARGS="$IGNORE_ARGS --ignore $rule"
+          done
+        fi
+
+        echo "$FILES" | while read -r file; do
+          echo "Linting: $file"
+          hadolint --failure-threshold ${{ inputs.failure_threshold }} $IGNORE_ARGS "$file"
+        done
+
+    - name: Summary
+      if: always()
+      shell: bash
+      run: |
+        cat >> $GITHUB_STEP_SUMMARY << EOF
+        ### 🐳 Hadolint
+
+        | Field | Value |
+        |-------|-------|
+        | Path | \`${{ inputs.path }}\` |
+        | Files | ${{ steps.hadolint.outputs.file_count || '0' }} |
+        | Threshold | \`${{ inputs.failure_threshold }}\` |
+        | Version | \`${{ inputs.hadolint_version }}\` |
+        EOF
