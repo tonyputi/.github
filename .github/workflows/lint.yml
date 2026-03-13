@@ -1,0 +1,91 @@
+name: Lint
+
+on:
+  workflow_call:
+    inputs:
+      frameworks:
+        description: 'Comma-separated frameworks to lint: shell, yaml, dockerfile (or "all")'
+        required: false
+        type: string
+        default: 'all'
+      path:
+        description: 'Path to scan'
+        required: false
+        type: string
+        default: '.'
+      # Shell-specific
+      shell_severity:
+        description: 'ShellCheck minimum severity (error, warning, info, style)'
+        required: false
+        type: string
+        default: 'warning'
+      # YAML-specific
+      yaml_config:
+        description: 'Path to yamllint config file'
+        required: false
+        type: string
+      yaml_strict:
+        description: 'Treat YAML warnings as errors'
+        required: false
+        type: boolean
+        default: false
+      # Dockerfile-specific
+      dockerfile_ignore:
+        description: 'Comma-separated Hadolint rules to ignore (e.g., DL3008,DL3009)'
+        required: false
+        type: string
+      timeout:
+        description: 'Job timeout in minutes'
+        required: false
+        type: number
+        default: 10
+
+permissions:
+  contents: read
+
+jobs:
+  shell:
+    name: ShellCheck
+    if: contains(inputs.frameworks, 'shell') || inputs.frameworks == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(inputs.timeout) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint shell scripts
+        uses: tonyputi/.github/actions/lint/shell@main
+        with:
+          path: ${{ inputs.path }}
+          severity: ${{ inputs.shell_severity }}
+
+  yaml:
+    name: yamllint
+    if: contains(inputs.frameworks, 'yaml') || inputs.frameworks == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(inputs.timeout) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint YAML files
+        uses: tonyputi/.github/actions/lint/yaml@main
+        with:
+          path: ${{ inputs.path }}
+          config: ${{ inputs.yaml_config }}
+          strict: ${{ inputs.yaml_strict }}
+
+  dockerfile:
+    name: Hadolint
+    if: contains(inputs.frameworks, 'dockerfile') || inputs.frameworks == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(inputs.timeout) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint Dockerfiles
+        uses: tonyputi/.github/actions/lint/dockerfile@main
+        with:
+          path: ${{ inputs.path }}
+          ignore: ${{ inputs.dockerfile_ignore }}
