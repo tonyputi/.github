@@ -1,0 +1,32 @@
+name: 'Setup SOPS'
+description: 'Install SOPS and configure age key for secrets decryption'
+author: 'tonyputi'
+
+inputs:
+  version:
+    description: 'SOPS version to install'
+    required: false
+    default: '3.9.4'
+  age-key:
+    description: 'Age private key for decryption'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download SOPS
+      shell: bash
+      run: |
+        curl -Lo /usr/local/bin/sops \
+          "https://github.com/getsops/sops/releases/download/v${{ inputs.version }}/sops-v${{ inputs.version }}.linux.amd64"
+        chmod +x /usr/local/bin/sops
+        sops --version
+
+    - name: Configure age key
+      shell: bash
+      env:
+        AGE_KEY: ${{ inputs.age-key }}
+      run: |
+        mkdir -p ~/.config/sops/age
+        printf '%s\n' "$AGE_KEY" > ~/.config/sops/age/keys.txt
+        chmod 600 ~/.config/sops/age/keys.txt

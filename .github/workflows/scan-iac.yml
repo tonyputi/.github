@@ -1,0 +1,151 @@
+name: Security Scan (IaC)
+
+# Reusable workflow for scanning Infrastructure as Code
+# Supports: Terraform, Ansible, Docker, Kubernetes, GitHub Actions
+on:
+  workflow_call:
+    inputs:
+      directory:
+        description: 'Directory to scan'
+        required: false
+        type: string
+        default: '.'
+      framework:
+        description: 'Framework to scan (terraform, ansible, dockerfile, kubernetes, github_actions, all)'
+        required: false
+        type: string
+        default: 'all'
+      soft_fail:
+        description: 'Do not fail the build on findings'
+        required: false
+        type: boolean
+        default: false
+      skip_checks:
+        description: 'Comma-separated list of check IDs to skip'
+        required: false
+        type: string
+      skip_path:
+        description: 'Comma-separated list of paths to skip (e.g., collections/,vendor/)'
+        required: false
+        type: string
+      output_format:
+        description: 'Output format (cli, json, sarif, github_failed_only)'
+        required: false
+        type: string
+        default: 'github_failed_only'
+      checkov_version:
+        description: 'Checkov version to use'
+        required: false
+        type: string
+        default: 'latest'
+      timeout:
+        description: 'Job timeout in minutes'
+        required: false
+        type: number
+        default: 10
+    outputs:
+      passed:
+        description: 'Number of passed checks'
+        value: ${{ jobs.checkov.outputs.passed }}
+      failed:
+        description: 'Number of failed checks'
+        value: ${{ jobs.checkov.outputs.failed }}
+      skipped:
+        description: 'Number of skipped checks'
+        value: ${{ jobs.checkov.outputs.skipped }}
+
+permissions:
+  contents: read
+
+jobs:
+  checkov:
+    name: Checkov Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(inputs.timeout) }}
+    outputs:
+      passed: ${{ steps.scan.outputs.passed }}
+      failed: ${{ steps.scan.outputs.failed }}
+      skipped: ${{ steps.scan.outputs.skipped }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Checkov
+        run: |
+          if [ "${{ inputs.checkov_version }}" = "latest" ]; then
+            pip install checkov
+          else
+            pip install checkov==${{ inputs.checkov_version }}
+          fi
+
+      - name: Run Checkov
+        id: scan
+        run: |
+          ARGS="--directory ${{ inputs.directory }}"
+
+          if [ "${{ inputs.framework }}" != "all" ]; then
+            ARGS="$ARGS --framework ${{ inputs.framework }}"
+          fi
+
+          ARGS="$ARGS --output ${{ inputs.output_format }}"
+
+          if [ -n "${{ inputs.skip_checks }}" ]; then
+            ARGS="$ARGS --skip-check ${{ inputs.skip_checks }}"
+          fi
+
+          if [ -n "${{ inputs.skip_path }}" ]; then
+            IFS=',' read -ra PATHS <<< "${{ inputs.skip_path }}"
+            for path in "${PATHS[@]}"; do
+              ARGS="$ARGS --skip-path $path"
+            done
+          fi
+
+          if [ "${{ inputs.soft_fail }}" = "true" ]; then
+            ARGS="$ARGS --soft-fail"
+          fi
+
+          ARGS="$ARGS --compact"
+
+          echo "Running: checkov $ARGS"
+
+          set +e
+          OUTPUT=$(checkov $ARGS 2>&1)
+          EXIT_CODE=$?
+          set -e
+
+          echo "$OUTPUT"
+
+          PASSED=$(echo "$OUTPUT" | grep -oP 'Passed checks: \K\d+' || echo "0")
+          FAILED=$(echo "$OUTPUT" | grep -oP 'Failed checks: \K\d+' || echo "0")
+          SKIPPED=$(echo "$OUTPUT" | grep -oP 'Skipped checks: \K\d+' || echo "0")
+
+          echo "passed=$PASSED" >> "$GITHUB_OUTPUT"
+          echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
+          echo "skipped=$SKIPPED" >> "$GITHUB_OUTPUT"
+
+          if [ "$FAILED" -gt 0 ]; then
+            ICON="❌"
+          else
+            ICON="✅"
+          fi
+
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ### $ICON Security Scan Results
+
+          | Metric | Count |
+          |--------|-------|
+          | ✅ Passed | $PASSED |
+          | ❌ Failed | $FAILED |
+          | ⏭️ Skipped | $SKIPPED |
+
+          **Framework:** \`${{ inputs.framework }}\`
+          **Directory:** \`${{ inputs.directory }}\`
+          EOF
+
+          exit $EXIT_CODE

@@ -1,0 +1,65 @@
+name: 'Lint YAML'
+description: 'Run yamllint on YAML files'
+author: 'tonyputi'
+
+inputs:
+  path:
+    description: 'Path to scan'
+    required: false
+    default: '.'
+  config:
+    description: 'Path to yamllint config file'
+    required: false
+  strict:
+    description: 'Treat warnings as errors'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run yamllint
+      id: yamllint
+      shell: bash
+      run: |
+        if ! command -v yamllint &> /dev/null; then
+          pip install --quiet yamllint
+        fi
+
+        CONFIG_ARG=""
+        CONFIG_FILE="default"
+        if [ -n "${{ inputs.config }}" ]; then
+          CONFIG_ARG="-c ${{ inputs.config }}"
+          CONFIG_FILE="${{ inputs.config }}"
+        elif [ -f ".yamllint.yml" ]; then
+          CONFIG_ARG="-c .yamllint.yml"
+          CONFIG_FILE=".yamllint.yml"
+        elif [ -f ".yamllint.yaml" ]; then
+          CONFIG_ARG="-c .yamllint.yaml"
+          CONFIG_FILE=".yamllint.yaml"
+        elif [ -f ".yamllint" ]; then
+          CONFIG_ARG="-c .yamllint"
+          CONFIG_FILE=".yamllint"
+        fi
+        echo "config_file=$CONFIG_FILE" >> "$GITHUB_OUTPUT"
+
+        STRICT_ARG=""
+        if [ "${{ inputs.strict }}" == "true" ]; then
+          STRICT_ARG="--strict"
+        fi
+
+        yamllint $CONFIG_ARG $STRICT_ARG ${{ inputs.path }}
+
+    - name: Summary
+      if: always()
+      shell: bash
+      run: |
+        cat >> "$GITHUB_STEP_SUMMARY" << EOF
+        ### 📄 yamllint
+
+        | Field | Value |
+        |-------|-------|
+        | Path | \`${{ inputs.path }}\` |
+        | Config | \`${{ steps.yamllint.outputs.config_file || 'default' }}\` |
+        | Strict | ${{ inputs.strict }} |
+        EOF

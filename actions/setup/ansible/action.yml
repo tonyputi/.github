@@ -1,0 +1,59 @@
+name: 'Setup Ansible'
+description: 'Install Ansible and Galaxy collections'
+author: 'tonyputi'
+
+inputs:
+  python_version:
+    description: 'Python version to use'
+    required: false
+    default: '3.12'
+  ansible_version:
+    description: 'Ansible version (empty for latest)'
+    required: false
+    default: ''
+  requirements_file:
+    description: 'Path to Galaxy requirements file'
+    required: false
+    default: 'requirements.yml'
+  working_directory:
+    description: 'Working directory'
+    required: false
+    default: '.'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python_version }}
+
+    - name: Install Ansible
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.ansible_version }}" ]; then
+          pip install ansible==${{ inputs.ansible_version }}
+        else
+          pip install ansible
+        fi
+
+    - name: Install Galaxy Collections
+      if: hashFiles(format('{0}/{1}', inputs.working_directory, inputs.requirements_file)) != ''
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: ansible-galaxy collection install -r ${{ inputs.requirements_file }}
+
+    - name: Summary
+      if: always()
+      shell: bash
+      run: |
+        ANSIBLE_VER=$(ansible --version | head -1)
+        cat >> "$GITHUB_STEP_SUMMARY" << EOF
+        ### 🔧 Ansible Setup
+
+        | Field | Value |
+        |-------|-------|
+        | Python | \`${{ inputs.python_version }}\` |
+        | Ansible | \`$ANSIBLE_VER\` |
+        | Requirements | \`${{ inputs.requirements_file }}\` |
+        EOF

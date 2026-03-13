@@ -1,0 +1,64 @@
+name: 'Setup SSH Key'
+description: 'Configure SSH key and known hosts for remote server access'
+author: 'tonyputi'
+
+inputs:
+  ssh_key:
+    description: 'SSH private key'
+    required: true
+  key_name:
+    description: 'Name for the key file'
+    required: false
+    default: 'id_ed25519'
+  hosts:
+    description: 'Comma-separated list of hosts for ssh-keyscan'
+    required: false
+  known_hosts:
+    description: 'Known hosts content (alternative to hosts input)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup SSH directory
+      shell: bash
+      run: mkdir -p ~/.ssh && chmod 700 ~/.ssh
+
+    - name: Write SSH key
+      shell: bash
+      run: |
+        echo "${{ inputs.ssh_key }}" > ~/.ssh/${{ inputs.key_name }}
+        chmod 600 ~/.ssh/${{ inputs.key_name }}
+
+    - name: Add known hosts via keyscan
+      if: inputs.hosts != ''
+      shell: bash
+      run: |
+        IFS=',' read -ra HOSTS <<< "${{ inputs.hosts }}"
+        for host in "${HOSTS[@]}"; do
+          host=$(echo "$host" | xargs)  # trim whitespace
+          echo "Scanning: $host"
+          ssh-keyscan -H "$host" >> ~/.ssh/known_hosts 2>/dev/null || true
+        done
+
+    - name: Add known hosts content
+      if: inputs.known_hosts != ''
+      shell: bash
+      run: echo "${{ inputs.known_hosts }}" >> ~/.ssh/known_hosts
+
+    - name: Summary
+      if: always()
+      shell: bash
+      run: |
+        HOST_COUNT=0
+        if [ -n "${{ inputs.hosts }}" ]; then
+          HOST_COUNT=$(echo "${{ inputs.hosts }}" | tr ',' '\n' | wc -l | xargs)
+        fi
+        cat >> "$GITHUB_STEP_SUMMARY" << EOF
+        ### 🔑 SSH Key Setup
+
+        | Field | Value |
+        |-------|-------|
+        | Key File | \`~/.ssh/${{ inputs.key_name }}\` |
+        | Hosts Scanned | $HOST_COUNT |
+        EOF
