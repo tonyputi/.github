@@ -1,0 +1,125 @@
+name: Test PHP Application
+
+# Reusable workflow for testing PHP/Laravel applications
+# Supports Laravel, Lumen, and generic PHP/Composer projects
+on:
+  workflow_call:
+    inputs:
+      php_versions:
+        description: 'PHP versions to test (JSON array)'
+        required: false
+        type: string
+        default: '["8.4"]'
+      php_extensions:
+        description: 'PHP extensions to install'
+        required: false
+        type: string
+      node_version:
+        description: 'Node.js version to use (empty = skip)'
+        required: false
+        type: string
+        default: ''
+      timeout:
+        description: 'Job timeout in minutes'
+        required: false
+        type: number
+        default: 10
+      github_app_id:
+        description: 'GitHub App ID'
+        required: true
+        type: string
+    secrets:
+      github_app_private_key:
+        description: 'GitHub App private key (PEM)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  run-tests:
+    name: Run Tests (PHP ${{ matrix.php_version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(inputs.timeout) }}
+    environment: testing
+    strategy:
+      matrix:
+        php_version: ${{ fromJSON(inputs.php_versions) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect project type
+        id: detect
+        run: |
+          JQ_QUERY='.require["laravel/framework"] // .require["laravel/lumen-framework"]'
+          IS_LARAVEL=$(jq -e "$JQ_QUERY" composer.json >/dev/null 2>&1 && echo true || echo false)
+          echo "is_laravel=$IS_LARAVEL" >> $GITHUB_OUTPUT
+          echo "has_node=$([ -f package.json ] && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php_version }}
+          tools: composer:v2
+          extensions: ${{ inputs.php_extensions }}
+          coverage: xdebug
+
+      - name: Setup Node.js
+        if: steps.detect.outputs.has_node == 'true' && inputs.node_version != ''
+        uses: tonyputi/.github/actions/setup/node@main
+        with:
+          node_version: ${{ inputs.node_version }}
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ inputs.github_app_id }}
+          private-key: ${{ secrets.github_app_private_key }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Setup Composer
+        uses: tonyputi/.github/actions/setup/composer@main
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          php_version: ${{ matrix.php_version }}
+
+      - name: Copy Environment File
+        if: steps.detect.outputs.is_laravel == 'true'
+        run: if [ -f .env.testing ]; then cp .env.testing .env; elif [ -f .env.example ]; then cp .env.example .env; fi
+
+      - name: Generate Application Key
+        if: steps.detect.outputs.is_laravel == 'true'
+        run: php artisan key:generate
+
+      - name: Build Assets
+        if: steps.detect.outputs.has_node == 'true' && inputs.node_version != ''
+        run: npm run build
+
+      - name: Run tests
+        env:
+          XDEBUG_MODE: coverage
+        run: composer test
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            ICON="✅"
+            STATUS="Passed"
+          else
+            ICON="❌"
+            STATUS="Failed"
+          fi
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ### $ICON Tests $STATUS
+
+          | Field        | Value                                                                                  |
+          |--------------|----------------------------------------------------------------------------------------|
+          | PHP Version  | \`${{ matrix.php_version }}\`                                                            |
+          | Project Type | ${{ steps.detect.outputs.is_laravel == 'true' && 'Laravel/Lumen' || 'PHP/Composer' }} |
+          | Node.js      | ${{ steps.detect.outputs.has_node == 'true' && inputs.node_version || 'Not used' }}   |
+          EOF

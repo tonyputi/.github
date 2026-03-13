@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/**'
+      - 'actions/**'
+
+permissions:
+  contents: read
+
+jobs:
+  lint-shell:
+    name: Lint Shell Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint shell scripts
+        uses: ./actions/lint/shell
+        with:
+          path: 'scripts'
+          severity: 'warning'
+
+  lint-yaml:
+    name: Lint YAML
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint workflow files
+        uses: ./actions/lint/yaml
+        with:
+          path: '.github/workflows'

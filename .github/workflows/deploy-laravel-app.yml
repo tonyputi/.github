@@ -1,0 +1,199 @@
+name: Deploy Laravel Application
+
+# Reusable workflow for deploying Laravel applications via SCP + SSH
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Deployment environment (stage/production)'
+        required: true
+        type: string
+      app_name:
+        description: 'Application name'
+        required: false
+        type: string
+      app_root:
+        description: 'Application root path'
+        required: false
+        type: string
+        default: '/var/www/html'
+      app_user:
+        description: 'Application user'
+        required: false
+        type: string
+        default: 'www-data'
+      releases_count:
+        description: 'Number of releases to keep'
+        required: false
+        type: number
+        default: 4
+      server_host:
+        description: 'Server hostname or IP'
+        required: false
+        type: string
+      server_user:
+        description: 'Server username'
+        required: false
+        type: string
+        default: 'deploy'
+      server_port:
+        description: 'Server SSH port'
+        required: false
+        type: number
+        default: 22
+      env_overrides:
+        description: 'Environment variables to override (JSON)'
+        required: false
+        type: string
+        default: '{}'
+      node_version:
+        description: 'Node.js version for frontend build (empty = skip)'
+        required: false
+        type: string
+        default: ''
+      timeout:
+        description: 'Job timeout in minutes'
+        required: false
+        type: number
+        default: 10
+      github_app_id:
+        description: 'GitHub App ID'
+        required: true
+        type: string
+    secrets:
+      github_app_private_key:
+        description: 'GitHub App private key (PEM)'
+        required: true
+      server_ssh_key:
+        description: 'SSH private key for server access'
+        required: true
+      env_secrets:
+        description: 'Environment secrets to inject into .env (JSON)'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(inputs.timeout) }}
+    environment: ${{ inputs.environment }}
+
+    env:
+      APP_PATH: ${{ format('{0}/{1}', vars.APP_ROOT || inputs.app_root, inputs.app_name || github.event.repository.name) }}
+      APP_USER: ${{ vars.APP_USER || inputs.app_user }}
+      APP_NAME: ${{ vars.APP_NAME || inputs.app_name || github.event.repository.name }}
+      RELEASES_COUNT: ${{ vars.RELEASES_COUNT || inputs.releases_count }}
+      DEPLOY_BRANCH: ${{ github.ref_name }}
+
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ inputs.github_app_id }}
+          private-key: ${{ secrets.github_app_private_key }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Set the release path
+        id: release_path
+        run: echo "RELEASE_PATH=$APP_PATH/releases/$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
+
+      - name: Checkout ${{ github.repository }} repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          path: build
+
+      - name: Checkout .github repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/.github
+          ref: main
+          token: ${{ steps.app-token.outputs.token }}
+          path: .github
+
+      - name: Setup Composer
+        uses: tonyputi/.github/actions/setup/composer@main
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          working_directory: build
+          no_dev: 'true'
+
+      - name: Detect project type
+        id: detect
+        run: echo "has_node=$([ -f build/package.json ] && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        if: steps.detect.outputs.has_node == 'true' && inputs.node_version != ''
+        uses: tonyputi/.github/actions/setup/node@main
+        with:
+          node_version: ${{ inputs.node_version }}
+          working_directory: build
+
+      - name: Build Assets
+        if: steps.detect.outputs.has_node == 'true' && inputs.node_version != ''
+        working-directory: build
+        run: npm run build
+
+      - name: Generate .env file
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          ENV_OVERRIDES: ${{ inputs.env_overrides }}
+          ENV_SECRETS: ${{ secrets.env_secrets }}
+        run: ./.github/scripts/generate-env.sh build
+
+      - name: Cleaning up build directory
+        run: |
+          rm -rf build/{.git,.github,.cursor,.devcontainer}
+          rm -rf build/{.dockerignore,Dockerfile}
+          rm -rf build/docker-compose.*
+          rm -rf build/.env.*
+          rm -rf build/storage
+          rm -rf build/node_modules
+
+      - name: Setting up permissions
+        run: |
+          sudo find build -type d -exec chmod 775 {} +
+          sudo find build -type f -exec chmod 664 {} +
+          sudo chmod 400 build/.env
+
+      - name: Upload release to ${{ inputs.environment }}
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ vars.SERVER_HOST || inputs.server_host }}
+          username: ${{ vars.SERVER_USER || inputs.server_user }}
+          port: ${{ vars.SERVER_PORT || inputs.server_port }}
+          key: ${{ secrets.server_ssh_key }}
+          source: "build/*"
+          target: "${{ steps.release_path.outputs.RELEASE_PATH }}"
+          strip_components: 1
+
+      - name: Deploy to ${{ inputs.environment }} server
+        uses: appleboy/ssh-action@v1
+        env:
+          RELEASE_PATH: ${{ steps.release_path.outputs.RELEASE_PATH }}
+        with:
+          host: ${{ vars.SERVER_HOST || inputs.server_host }}
+          username: ${{ vars.SERVER_USER || inputs.server_user }}
+          port: ${{ vars.SERVER_PORT || inputs.server_port }}
+          key: ${{ secrets.server_ssh_key }}
+          envs: APP_PATH,APP_USER,APP_NAME,DEPLOY_BRANCH,RELEASES_COUNT,RELEASE_PATH
+          script_path: ./.github/scripts/deploy-laravel-app.sh
+
+      - name: Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ### 🚀 Deployment Complete
+
+          | Field        | Value                                                    |
+          |--------------|----------------------------------------------------------|
+          | Environment  | \`${{ inputs.environment }}\`                              |
+          | Application  | \`${{ env.APP_NAME }}\`                                    |
+          | Server       | \`${{ vars.SERVER_HOST || inputs.server_host }}\`          |
+          | Release Path | \`${{ steps.release_path.outputs.RELEASE_PATH }}\`         |
+          | Branch       | \`${{ github.ref_name }}\`                                 |
+          | Commit       | \`${{ github.sha }}\`                                      |
+          EOF

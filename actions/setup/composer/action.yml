@@ -1,0 +1,55 @@
+name: 'Setup Composer'
+description: 'Configure Composer with caching and authentication'
+author: 'tonyputi'
+
+inputs:
+  github_token:
+    description: 'GitHub token for private repos (GitHub App token or PAT)'
+    required: true
+  working_directory:
+    description: 'Working directory for composer commands'
+    required: false
+    default: '.'
+  php_version:
+    description: 'PHP version (used in cache key)'
+    required: false
+    default: ''
+  install:
+    description: 'Run composer install'
+    required: false
+    default: 'true'
+  no_dev:
+    description: 'Install without dev dependencies'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get composer cache directory
+      id: composer-cache
+      shell: bash
+      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+    - name: Cache Composer dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.composer-cache.outputs.dir }}
+        key: ${{ runner.os }}-composer-${{ inputs.php_version }}-${{ hashFiles(format('{0}/composer.lock', inputs.working_directory)) }}
+        restore-keys: ${{ runner.os }}-composer-${{ inputs.php_version }}-
+
+    - name: Setup GitHub auth
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+      run: composer config -d ${{ inputs.working_directory }} http-basic.github.com x-access-token "$GH_TOKEN"
+
+    - name: Install dependencies
+      if: inputs.install == 'true'
+      shell: bash
+      run: |
+        FLAGS="--prefer-dist --no-ansi --no-interaction --no-progress -o -q"
+        if [ "${{ inputs.no_dev }}" == "true" ]; then
+          FLAGS="$FLAGS --no-dev"
+        fi
+        composer install -d ${{ inputs.working_directory }} $FLAGS
