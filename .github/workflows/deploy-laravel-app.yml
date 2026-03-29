@@ -31,7 +31,7 @@ on:
         description: 'Server hostname or IP'
         required: false
         type: string
-      server_user:
+      server_ssh_user:
         description: 'Server username'
         required: false
         type: string
@@ -164,7 +164,7 @@ jobs:
         uses: appleboy/scp-action@v1
         with:
           host: ${{ vars.SERVER_HOST || inputs.server_host }}
-          username: ${{ vars.SERVER_USER || inputs.server_user }}
+          username: ${{ vars.SERVER_SSH_USER || inputs.server_ssh_user }}
           port: ${{ vars.SERVER_PORT || inputs.server_port }}
           key: ${{ secrets.server_ssh_key }}
           source: "build/*"
@@ -177,7 +177,7 @@ jobs:
           RELEASE_PATH: ${{ steps.release_path.outputs.RELEASE_PATH }}
         with:
           host: ${{ vars.SERVER_HOST || inputs.server_host }}
-          username: ${{ vars.SERVER_USER || inputs.server_user }}
+          username: ${{ vars.SERVER_SSH_USER || inputs.server_ssh_user }}
           port: ${{ vars.SERVER_PORT || inputs.server_port }}
           key: ${{ secrets.server_ssh_key }}
           envs: APP_PATH,APP_USER,APP_NAME,DEPLOY_BRANCH,RELEASES_COUNT,RELEASE_PATH
