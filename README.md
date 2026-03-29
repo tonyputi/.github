@@ -1,6 +1,6 @@
 # Reusable GitHub Actions Workflows
 
-Centralized reusable workflows and composite actions for `tonyputi` personal account, shared across `tonyputi/*` and `sallemi-iot/*` repositories.
+Centralized reusable workflows and composite actions for `tonyputi` personal account, shared across `tonyputi/*` repositories.
 
 ## Quick Reference
 
@@ -9,18 +9,23 @@ Centralized reusable workflows and composite actions for `tonyputi` personal acc
 | Workflow                       | Description                                      | Status |
 | ------------------------------ | ------------------------------------------------ | ------ |
 | [`generate-semantic-release`](#generate-semantic-release) | Automated semantic versioning and releases | Active |
+| [`deploy-laravel-app`](#deploy-laravel-app) | Laravel deploy via SCP + SSH            | Active |
+| [`test-php-app`](#test-php-app) | PHP test runner                                   | Active |
+| [`lint`](#lint)                | Lint checks (yaml, shell, dockerfile)              | Active |
 | [`scan-iac`](#scan-iac)        | Security scanning for IaC (Terraform/Ansible/Docker) | Active |
 
 ### Actions
 
 | Action                   | Description                                          |
 | ------------------------ | ---------------------------------------------------- |
-| [`setup/sops`](#setupsops)     | Install SOPS and configure age key for secrets decryption |
-| [`setup/ansible`](#setupansible) | Install Ansible and Galaxy collections             |
-| [`setup/ssh-key`](#setupssh-key) | Configure SSH key and known hosts                  |
-| [`lint/yaml`](#lintyaml)       | Run yamllint on YAML files                           |
-| [`lint/shell`](#lintshell)     | Run ShellCheck on shell scripts                      |
-| [`lint/dockerfile`](#lintdockerfile) | Run Hadolint on Dockerfiles                    |
+| [`setup/sops`](#setupsops)         | Install SOPS and configure age key for secrets decryption |
+| [`setup/ansible`](#setupansible)   | Install Ansible and Galaxy collections             |
+| [`setup/composer`](#setupcomposer) | PHP Composer setup with caching                    |
+| [`setup/node`](#setupnode)         | Node.js setup with caching                         |
+| [`setup/ssh-key`](#setupssh-key)   | Configure SSH key and known hosts                  |
+| [`lint/yaml`](#lintyaml)           | Run yamllint on YAML files                         |
+| [`lint/shell`](#lintshell)         | Run ShellCheck on shell scripts                    |
+| [`lint/dockerfile`](#lintdockerfile) | Run Hadolint on Dockerfiles                      |
 
 ## Usage
 
@@ -173,7 +178,7 @@ Configure SSH key and known hosts for remote server access.
   uses: tonyputi/.github/actions/setup/ssh-key@main
   with:
     ssh_key: ${{ secrets.SERVER_SSH_KEY }}
-    hosts: 'nomadnt.com'
+    hosts: 'example.com'
 ```
 
 </details>
