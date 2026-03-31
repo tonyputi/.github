@@ -46,7 +46,12 @@ echo "🔄 Regenerating autoload with server paths..."
 sudo -u $APP_USER composer -d $RELEASE_PATH dump-autoload -o -q
 
 echo "🗄️ Running migrations..."
-sudo -u $APP_USER php $RELEASE_PATH/artisan migrate --force --graceful --ansi -qn
+GRACEFUL=""
+LARAVEL_MAJOR=$(php $RELEASE_PATH/artisan --version 2>/dev/null | grep -oP 'Laravel Framework \K\d+' || echo "0")
+if [ "${LARAVEL_MAJOR:-0}" -ge 10 ]; then
+  GRACEFUL="--graceful"
+fi
+sudo -u $APP_USER php $RELEASE_PATH/artisan migrate --force $GRACEFUL --ansi -qn
 
 echo "⚡ Running post-deploy commands..."
 if jq -e '.scripts["post-deploy"]' "$RELEASE_PATH/composer.json" > /dev/null 2>&1; then
