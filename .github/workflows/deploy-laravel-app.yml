@@ -139,6 +139,7 @@ jobs:
           tools: composer:v2
 
       - name: Add Flux Credentials
+        working-directory: build
         env:
           FLUX_USERNAME: ${{ secrets.flux_username }}
           FLUX_LICENSE_KEY: ${{ secrets.flux_license_key }}
@@ -148,6 +149,7 @@ jobs:
           fi
 
       - name: Add Nova Credentials
+        working-directory: build
         env:
           NOVA_EMAIL: ${{ secrets.nova_email }}
           NOVA_LICENSE_KEY: ${{ secrets.nova_license_key }}
