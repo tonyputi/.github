@@ -51,6 +51,11 @@ on:
         required: false
         type: string
         default: ''
+      php_version:
+        description: 'PHP version to use for the Composer install that builds the release artifact'
+        required: false
+        type: string
+        default: '8.4'
       timeout:
         description: 'Job timeout in minutes'
         required: false
@@ -115,12 +120,19 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           path: .github
 
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ inputs.php_version }}
+          tools: composer:v2
+
       - name: Setup Composer
         uses: tonyputi/.github/actions/setup/composer@main
         with:
           github_token: ${{ steps.app-token.outputs.token }}
           working_directory: build
           no_dev: 'true'
+          php_version: ${{ inputs.php_version }}
 
       - name: Detect project type
         id: detect

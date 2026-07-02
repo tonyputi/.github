@@ -7,6 +7,11 @@ on:
         description: 'GitHub App ID'
         required: true
         type: string
+      php_version:
+        description: 'PHP version to use for Composer commands during release (e.g. version bump in release.config exec plugin)'
+        required: false
+        type: string
+        default: '8.4'
     secrets:
       github_app_private_key:
         description: 'GitHub App private key (PEM)'
@@ -45,6 +50,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ inputs.php_version }}
+          tools: composer:v2
       - name: Detect plugins from config
         id: detect
         run: |
