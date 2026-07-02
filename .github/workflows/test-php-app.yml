@@ -85,6 +85,10 @@ jobs:
         with:
           github_token: ${{ steps.app-token.outputs.token }}
           php_version: ${{ matrix.php_version }}
+          flux_username: ${{ secrets.FLUX_USERNAME }}
+          flux_license_key: ${{ secrets.FLUX_LICENSE_KEY }}
+          nova_email: ${{ secrets.NOVA_EMAIL }}
+          nova_license_key: ${{ secrets.NOVA_LICENSE_KEY }}
 
       - name: Copy Environment File
         if: steps.detect.outputs.is_laravel == 'true'

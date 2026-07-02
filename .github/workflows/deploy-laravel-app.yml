@@ -133,6 +133,10 @@ jobs:
           working_directory: build
           no_dev: 'true'
           php_version: ${{ inputs.php_version }}
+          flux_username: ${{ secrets.FLUX_USERNAME }}
+          flux_license_key: ${{ secrets.FLUX_LICENSE_KEY }}
+          nova_email: ${{ secrets.NOVA_EMAIL }}
+          nova_license_key: ${{ secrets.NOVA_LICENSE_KEY }}
 
       - name: Detect project type
         id: detect

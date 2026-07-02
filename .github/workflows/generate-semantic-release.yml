@@ -55,6 +55,22 @@ jobs:
         with:
           php-version: ${{ inputs.php_version }}
           tools: composer:v2
+      - name: Add Flux Credentials
+        env:
+          FLUX_USERNAME: ${{ secrets.FLUX_USERNAME }}
+          FLUX_LICENSE_KEY: ${{ secrets.FLUX_LICENSE_KEY }}
+        run: |
+          if [ -n "$FLUX_USERNAME" ]; then
+            composer config http-basic.composer.fluxui.dev "$FLUX_USERNAME" "$FLUX_LICENSE_KEY"
+          fi
+      - name: Add Nova Credentials
+        env:
+          NOVA_EMAIL: ${{ secrets.NOVA_EMAIL }}
+          NOVA_LICENSE_KEY: ${{ secrets.NOVA_LICENSE_KEY }}
+        run: |
+          if [ -n "$NOVA_EMAIL" ]; then
+            composer config http-basic.nova.laravel.com "$NOVA_EMAIL" "$NOVA_LICENSE_KEY"
+          fi
       - name: Detect plugins from config
         id: detect
         run: |
