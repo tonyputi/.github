@@ -22,22 +22,6 @@ inputs:
     description: 'Install without dev dependencies'
     required: false
     default: 'false'
-  flux_username:
-    description: 'Flux Pro account email (fluxui.dev). Leave empty if the project does not use Flux Pro.'
-    required: false
-    default: ''
-  flux_license_key:
-    description: 'Flux Pro license key (fluxui.dev). Leave empty if the project does not use Flux Pro.'
-    required: false
-    default: ''
-  nova_email:
-    description: 'Laravel Nova account email (nova.laravel.com). Leave empty if the project does not use Nova.'
-    required: false
-    default: ''
-  nova_license_key:
-    description: 'Laravel Nova license key (nova.laravel.com). Leave empty if the project does not use Nova.'
-    required: false
-    default: ''
 
 runs:
   using: 'composite'
@@ -59,26 +43,6 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.github_token }}
       run: composer config -d ${{ inputs.working_directory }} http-basic.github.com x-access-token "$GH_TOKEN"
-
-    - name: Add Flux Credentials
-      shell: bash
-      env:
-        FLUX_USERNAME: ${{ inputs.flux_username }}
-        FLUX_LICENSE_KEY: ${{ inputs.flux_license_key }}
-      run: |
-        if [ -n "$FLUX_USERNAME" ]; then
-          composer config -d ${{ inputs.working_directory }} http-basic.composer.fluxui.dev "$FLUX_USERNAME" "$FLUX_LICENSE_KEY"
-        fi
-
-    - name: Add Nova Credentials
-      shell: bash
-      env:
-        NOVA_EMAIL: ${{ inputs.nova_email }}
-        NOVA_LICENSE_KEY: ${{ inputs.nova_license_key }}
-      run: |
-        if [ -n "$NOVA_EMAIL" ]; then
-          composer config -d ${{ inputs.working_directory }} http-basic.nova.laravel.com "$NOVA_EMAIL" "$NOVA_LICENSE_KEY"
-        fi
 
     - name: Install dependencies
       if: inputs.install == 'true'
