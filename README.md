@@ -11,6 +11,7 @@ Centralized reusable workflows and composite actions for `tonyputi` personal acc
 | [`generate-semantic-release`](#generate-semantic-release) | Automated semantic versioning and releases | Active |
 | [`deploy-laravel-app`](#deploy-laravel-app) | Laravel deploy via SCP + SSH            | Active |
 | [`test-php-app`](#test-php-app) | PHP test runner                                   | Active |
+| [`opencode-review`](#opencode-review) | Reusable read-only OpenCode PR review | Available (opt-in) |
 | [`lint`](#lint)                | Lint checks (yaml, shell, dockerfile)              | Active |
 | [`scan-iac`](#scan-iac)        | Security scanning for IaC (Terraform/Ansible/Docker) | Active |
 
@@ -85,6 +86,48 @@ jobs:
 | ------------------- | ------------------------------------ |
 | `release_published` | `true` if a new release was created  |
 | `release_version`   | The new version number (e.g., `1.2.3`) |
+
+---
+
+### OpenCode Review
+
+Reusable, language-agnostic pull request review. The calling repository owns event triggers, model selection, credentials, and any project-specific instructions. No repository is automatically enabled.
+
+**Requirements:** A provider API key, a `provider/model` identifier, and same-repository (non-fork) PR. Draft PRs are skipped. The workflow runs with code-read permissions and PR-comment permissions; OpenCode edits and shell execution are denied. Reviews have a 15-minute default timeout. No automated merge or code changes.
+
+<details>
+<summary>Example caller workflow (.github/workflows/opencode-review.yml)</summary>
+
+```yaml
+name: OpenCode Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+
+jobs:
+  review:
+    uses: tonyputi/.github/.github/workflows/opencode-review.yml@main
+    with:
+      model: openai/gpt-5.4 # Replace with a model available to your provider
+      timeout: 15
+      prompt: "Check compatibility with existing APIs and migrations."
+    secrets:
+      openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+```
+
+</details>
+
+**Inputs:** `model` (required), `variant` (optional), `timeout` (minutes; default 15), `prompt` (optional extra instructions).
+
+**Provider secrets:** pass only the credential for the chosen provider: `openai_api_key`, `anthropic_api_key`, `openrouter_api_key`, or `opencode_api_key`. The workflow uses the built-in `GITHUB_TOKEN`, without requiring installation of the OpenCode GitHub App.
+
+**Security constraints:** PRs from forks are deliberately skipped because provider secrets must not be exposed to untrusted code. The caller must grant `pull-requests: write` for review feedback, while `contents` remains read-only. A pinned OpenCode Action commit is used. For published production versions, prefer a pinned commit/tag of this central reusable workflow rather than `@main`.
 
 ---
 
