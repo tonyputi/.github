@@ -1,0 +1,83 @@
+name: OpenCode PR Review
+
+# Shared, language-agnostic PR review. Events are owned by the caller.
+on:
+  workflow_call:
+    inputs:
+      model:
+        description: 'OpenCode model identifier (provider/model)'
+        required: true
+        type: string
+      variant:
+        description: 'Optional reasoning variant supported by the model'
+        required: false
+        type: string
+        default: ''
+      timeout:
+        description: 'Maximum review duration in minutes'
+        required: false
+        type: number
+        default: 15
+      prompt:
+        description: 'Optional repository-specific review instructions'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      opencode_api_key:
+        required: false
+      openrouter_api_key:
+        required: false
+      openai_api_key:
+        required: false
+      anthropic_api_key:
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+
+jobs:
+  review:
+    # Prevent executing untrusted fork PRs with model-provider secrets.
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.draft == false }}
+    name: Review pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(inputs.timeout) }}
+    concurrency:
+      group: opencode-review-${{ github.repository }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Review with OpenCode
+        # Pin to the upstream action commit; update deliberately.
+        uses: anomalyco/opencode/github@2c14fc5586fe0b88e5c04732d2e846769cc35671
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OPENCODE_API_KEY: ${{ secrets.opencode_api_key }}
+          OPENROUTER_API_KEY: ${{ secrets.openrouter_api_key }}
+          OPENAI_API_KEY: ${{ secrets.openai_api_key }}
+          ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
+          OPENCODE_PERMISSION: '{"edit":"deny","bash":"deny","task":"deny","external_directory":"deny"}'
+        with:
+          model: ${{ inputs.model }}
+          variant: ${{ inputs.variant }}
+          use_github_token: true
+          share: false
+          prompt: |
+            Review this pull request without modifying files or executing commands.
+            Respect this repository's AGENTS.md and relevant project conventions.
+            Focus on concrete bugs, security vulnerabilities, regressions,
+            broken assumptions, and missing high-value tests.
+            Only report actionable findings with file/line references when possible.
+            Avoid cosmetic suggestions, speculation and duplicate comments.
+            If you find no significant issues, say so concisely.
+
+            Additional instructions from the calling repository:
+            ${{ inputs.prompt }}
