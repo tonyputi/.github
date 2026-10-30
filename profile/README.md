@@ -10,9 +10,9 @@ Based in **Malta** 🇲🇹, with experience across iGaming and affiliate busine
 
 ## Personal projects
 
+- [resume](https://github.com/tonyputi/resume) — my CV as JSON Resume data, published as a website and PDF.
 - [pi-github-app-auth](https://github.com/tonyputi/pi-github-app-auth) — a Pi extension that authenticates agent commands with a GitHub App installation.
 - [pi-lightpanda](https://github.com/tonyputi/pi-lightpanda) — a Pi extension for headless browser automation using Lightpanda.
-- [resume](https://github.com/tonyputi/resume) — my CV as JSON Resume data, published as a website and PDF.
 
 This account also hosts personal infrastructure, homelab, Arduino and home automation projects.
 
