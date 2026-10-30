@@ -1,8 +1,12 @@
 # Filippo Sallemi aka tonyputi
 
-Technical architect with experience in engineering leadership and hands-on development, based in **Malta** 🇲🇹.
+I bring engineering leadership and hands-on architecture together to simplify systems, strengthen teams and turn ideas into working software.
 
-I work on AI architecture, agents and workflow automation, including persistent memory, retrieval-augmented generation (RAG) and Model Context Protocol (MCP) integrations. My experience spans systems integration, cloud infrastructure and web application development, with a background in iGaming and affiliate businesses.
+I help teams make informed technical decisions, share knowledge and take ownership of delivery through clear direction, mentoring and autonomy.
+
+My work spans AI architecture, agents, workflow automation, persistent memory, retrieval-augmented generation (RAG) and Model Context Protocol (MCP) integrations, alongside systems integration, cloud infrastructure and web application development.
+
+Based in **Malta** 🇲🇹, with experience across iGaming and affiliate businesses.
 
 ## Personal projects
 
