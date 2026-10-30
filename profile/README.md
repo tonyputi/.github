@@ -1,21 +1,26 @@
 # Filippo Sallemi aka tonyputi
 
-Technology leader and engineering architect with 15+ years building and scaling products in iGaming, affiliates, and cloud infrastructure.
+Technical architect with experience in engineering leadership and hands-on development, based in **Malta** 🇲🇹.
 
-Based in **Malta** 🇲🇹
+I work on AI architecture, agents and workflow automation, including persistent memory, retrieval-augmented generation (RAG) and Model Context Protocol (MCP) integrations. My experience spans systems integration, cloud infrastructure and web application development, with a background in iGaming and affiliate businesses.
+
+## Personal projects
+
+- [pi-github-app-auth](https://github.com/tonyputi/pi-github-app-auth) — a Pi extension that authenticates agent commands with a GitHub App installation.
+- [pi-lightpanda](https://github.com/tonyputi/pi-lightpanda) — a Pi extension for headless browser automation using Lightpanda.
+- [resume](https://github.com/tonyputi/resume) — my CV as JSON Resume data, published as a website and PDF.
+
+This account also hosts personal infrastructure, homelab, Arduino and home automation projects.
 
 ## Stack
 
-**Backend** — PHP · Laravel · Node.js · Python · Go
-**Frontend** — Vue.js · Livewire · Tailwind CSS
-**Infrastructure** — Terraform · Ansible · AWS · Docker · GitHub Actions
-**Databases** — MySQL · PostgreSQL · Redis · Elasticsearch
-
-## Side projects
-
-This account hosts my personal infrastructure (IaC, homelab) and open source experiments — Arduino, home automation, and whatever else I'm tinkering with.
+- **Backend:** PHP · Laravel · Node.js · Python · Go
+- **Frontend:** Vue.js · Livewire · Tailwind CSS
+- **Infrastructure:** Terraform · Ansible · AWS · Docker · GitHub Actions
+- **Databases:** MySQL · PostgreSQL · Redis · Elasticsearch
 
 ## Links
 
-🌐 [filippo.sallemi.it](https://filippo.sallemi.it)
-💼 [linkedin.com/in/filipposallemi](https://linkedin.com/in/filipposallemi)
+- [Website and CV](https://filippo.sallemi.it/)
+- [LinkedIn](https://www.linkedin.com/in/filipposallemi/)
+- [GitHub](https://github.com/tonyputi)
