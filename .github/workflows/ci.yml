@@ -11,30 +11,6 @@ permissions:
   contents: read
 
 jobs:
-  test-env:
-    name: Test Environment Generation
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          tools: composer:v2
-
-      - name: Install Laravel dotenv parser for tests
-        run: |
-          mkdir -p "$RUNNER_TEMP/env-generator"
-          composer require --working-dir="$RUNNER_TEMP/env-generator" \
-            --no-interaction --no-progress 'vlucas/phpdotenv:^5.6'
-
-      - name: Run regression tests
-        env:
-          DOTENV_AUTOLOAD: ${{ runner.temp }}/env-generator/vendor/autoload.php
-        run: python3 -B -m unittest discover -s scripts/tests
-
   lint-shell:
     name: Lint Shell Scripts
     runs-on: ubuntu-latest

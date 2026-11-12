@@ -125,13 +125,6 @@ unchanged. Parser error details are suppressed to avoid logging credentials.
 Generated `.env` files are owner-readable/writable only during generation and
 owner-readable only in the deployed release.
 
-Run the regression tests with an existing Laravel project's autoloader:
-
-```bash
-DOTENV_AUTOLOAD=/path/to/laravel/vendor/autoload.php \
-  python3 -B -m unittest discover -s scripts/tests
-```
-
 Before enabling a new application, compare its generated environment with its
 current production configuration without printing values. Configure all required
 GitHub secrets before merging the application's deployment changes. Existing
