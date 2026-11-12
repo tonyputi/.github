@@ -60,7 +60,7 @@ fi
 
 echo "🔐 Setting permissions on release..."
 sudo find $RELEASE_PATH -type d -exec chmod 775 {} +
-sudo find $RELEASE_PATH -type f -exec chmod 664 {} +
+sudo find $RELEASE_PATH -type f ! -name .env -exec chmod 664 {} +
 sudo chmod 400 $RELEASE_PATH/.env
 
 echo "🔄 Switching to new release..."

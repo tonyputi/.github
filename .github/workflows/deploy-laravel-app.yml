@@ -201,7 +201,7 @@ jobs:
       - name: Setting up permissions
         run: |
           sudo find build -type d -exec chmod 775 {} +
-          sudo find build -type f -exec chmod 664 {} +
+          sudo find build -type f ! -name .env -exec chmod 664 {} +
           sudo chmod 400 build/.env
 
       - name: Upload release to ${{ inputs.environment }}

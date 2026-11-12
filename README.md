@@ -88,6 +88,57 @@ jobs:
 
 ---
 
+### Deploy Laravel App
+
+Production deployments require a versioned `.env.production` template with no
+credentials or personal data. There is no production fallback to `.env.example`.
+Other environments can use `.env.<environment>` or fall back to `.env.example`.
+
+Store credentials in the application's GitHub repository secrets, as referenced
+by the calling workflow (its reusable-workflow job cannot declare an environment).
+Each key in `env_secrets` and `env_overrides` must appear exactly once in the
+template. Every
+supplied production secret must be non-empty; omit unused optional secrets rather
+than passing empty values. Use `toJSON` so quotes, backslashes and newlines remain
+valid JSON:
+
+```yaml
+jobs:
+  deploy:
+    uses: tonyputi/.github/.github/workflows/deploy-laravel-app.yml@main
+    with:
+      environment: production
+      github_app_id: ${{ vars.GH_APP_ID }}
+    secrets:
+      github_app_private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+      server_ssh_key: ${{ secrets.SERVER_SSH_KEY }}
+      env_secrets: |
+        {
+          "APP_KEY": ${{ toJSON(secrets.APP_KEY) }}
+        }
+```
+
+The generator uses the application's installed `vlucas/phpdotenv` parser and
+checks `APP_ENV=production`, disabled `APP_DEBUG`, and a non-empty `APP_KEY` before
+writing `.env` or uploading the release. Secret values must survive parsing
+unchanged. Parser error details are suppressed to avoid logging credentials.
+Generated `.env` files are owner-readable/writable only during generation and
+owner-readable only in the deployed release.
+
+Run the regression tests with an existing Laravel project's autoloader:
+
+```bash
+DOTENV_AUTOLOAD=/path/to/laravel/vendor/autoload.php \
+  python3 -B -m unittest discover -s scripts/tests
+```
+
+Before enabling a new application, compare its generated environment with its
+current production configuration without printing values. Configure all required
+GitHub secrets before merging the application's deployment changes. Existing
+applications without a production template or with empty declared secrets must
+be configured before their next production deployment; their current release is
+not changed by a failed generation step.
+
 ### Scan IaC
 
 Security scanning for Infrastructure-as-Code using Checkov.
