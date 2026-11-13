@@ -35,3 +35,6 @@ jobs:
         uses: ./actions/lint/yaml
         with:
           path: '.github/workflows'
+
+      - name: Check Dependabot queue security
+        run: python3 scripts/test-queue-dependabot.py

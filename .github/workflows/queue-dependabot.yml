@@ -1,0 +1,102 @@
+name: Queue Dependabot auto-merge
+
+on:
+  workflow_call:
+    inputs:
+      validation_workflow:
+        description: 'Expected PR validation workflow path in the caller repository'
+        required: true
+        type: string
+    secrets:
+      github_app_private_key:
+        description: 'Dedicated caller-repository queue App private key (PEM)'
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  queue:
+    # This definition never activates repositories; the caller owns the rollout latch.
+    if: >-
+      github.event_name == 'workflow_run' &&
+      vars.DEPENDABOT_AUTO_MERGE_ENABLED == 'true' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+
+    steps:
+      # Never checkout code, restore caches or download artifacts in this workflow.
+      - name: Verify caller event and current Dependabot PR metadata
+        id: metadata
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QUEUE_ENABLED: ${{ vars.DEPENDABOT_AUTO_MERGE_ENABLED }}
+          APP_CLIENT_ID: ${{ vars.DEPENDABOT_QUEUE_APP_CLIENT_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.github_app_private_key }}
+          VALIDATION_WORKFLOW: ${{ inputs.validation_workflow }}
+        run: |
+          set -euo pipefail
+          # Actions string comparisons ignore case; Bash enforces exact opt-in.
+          if [[ "$QUEUE_ENABLED" != true || -z "$APP_CLIENT_ID" || -z "$APP_PRIVATE_KEY" ]]; then
+            exit 0
+          fi
+          if [[ "$GITHUB_EVENT_NAME" != workflow_run ]]; then
+            exit 0
+          fi
+          jq -e --arg repo "$GITHUB_REPOSITORY" --arg owner "$GITHUB_REPOSITORY_OWNER" \
+            --arg source "$VALIDATION_WORKFLOW" '
+              .action == "completed" and
+              .repository.full_name == $repo and
+              .repository.owner.login == $owner and
+              .repository.name == ($repo | split("/")[1]) and
+              (.repository.default_branch | type == "string" and length > 0) and
+              .workflow.path == $source and .workflow.id != null and
+              .workflow.id == .workflow_run.workflow_id and
+              .workflow_run.event == "pull_request" and
+              .workflow_run.status == "completed" and .workflow_run.conclusion == "success" and
+              .workflow_run.head_repository.full_name == $repo and
+              (.workflow_run.head_sha | test("^[a-f0-9]{40}$")) and
+              (.workflow_run.head_branch | startswith("dependabot/"))
+            ' "$GITHUB_EVENT_PATH" > /dev/null || exit 0
+          base=$(jq -r '.repository.default_branch' "$GITHUB_EVENT_PATH")
+          branch=$(jq -r '.workflow_run.head_branch' "$GITHUB_EVENT_PATH")
+          sha=$(jq -r '.workflow_run.head_sha' "$GITHUB_EVENT_PATH")
+          number=$(gh api --method GET "repos/$GITHUB_REPOSITORY/pulls" \
+            -f state=open -f "base=$base" -f "head=$GITHUB_REPOSITORY_OWNER:$branch" | \
+            jq -r --arg repo "$GITHUB_REPOSITORY" --arg base "$base" --arg sha "$sha" --arg branch "$branch" '
+              [.[] | select(
+                .state == "open" and .draft == false and
+                .user.login == "dependabot[bot]" and
+                .user.id == 49699333 and .user.type == "Bot" and
+                .base.repo.full_name == $repo and .base.ref == $base and
+                .head.repo.full_name == $repo and .head.ref == $branch and .head.sha == $sha
+              )] | if length == 1 then .[0].number else empty end')
+          if [[ "$number" =~ ^[1-9][0-9]*$ ]]; then
+            echo "number=$number" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create caller-repository queue token
+        if: steps.metadata.outputs.number != ''
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
+        with:
+          client-id: ${{ vars.DEPENDABOT_QUEUE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.github_app_private_key }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Enable native auto-merge without approval
+        if: steps.metadata.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ steps.metadata.outputs.number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          gh pr merge "$PR_NUMBER" --repo "$REPOSITORY" \
+            --auto --squash --match-head-commit "$HEAD_SHA"
