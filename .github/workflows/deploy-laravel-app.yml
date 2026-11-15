@@ -119,13 +119,13 @@ jobs:
         run: echo "RELEASE_PATH=$APP_PATH/releases/$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
 
       - name: Checkout ${{ github.repository }} repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
           path: build
 
       - name: Checkout .github repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.repository_owner }}/.github
           ref: main
