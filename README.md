@@ -99,7 +99,7 @@ Before adding the caller, enable repository auto-merge and squash merging, and
 require human CODEOWNER approval and reliable checks on the default branch, with
 no App bypass. Ensure CODEOWNERS covers the repository. The workflow does not
 create or validate these repository settings; Terraform manages them separately.
-This repository's CI requires both `Lint Shell Scripts` and `Lint YAML` as native checks.
+For this repository, require both `Lint Shell Scripts` and `Lint YAML` as native checks.
 
 Add this caller on the consumer's default branch. Replace `CI` with its actual PR
 workflow name and `<reviewed-commit-sha>` with the shared workflow's final reviewed
