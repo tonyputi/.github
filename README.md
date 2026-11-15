@@ -13,7 +13,7 @@ Centralized reusable workflows and composite actions for `tonyputi` personal acc
 | [`test-php-app`](#test-php-app) | PHP test runner                                   | Active |
 | [`lint`](#lint)                | Lint checks (yaml, shell, dockerfile)              | Active |
 | [`scan-iac`](#scan-iac)        | Security scanning for IaC (Terraform/Ansible/Docker) | Active |
-| [`enable-dependabot-auto-merge`](#enable-dependabot-auto-merge) | Opt Dependabot PRs into native auto-merge | Available |
+| [`auto-merge`](#dependabot-auto-merge) | Opt Dependabot PRs into native auto-merge | Available |
 
 ### Actions
 
@@ -89,7 +89,7 @@ jobs:
 
 ---
 
-### Enable Dependabot Auto-Merge
+### Dependabot Auto-Merge
 
 Opts Dependabot PRs into native squash auto-merge after a successful PR CI run.
 GitHub still requires the configured checks and human CODEOWNER approval; if both
@@ -118,7 +118,7 @@ permissions:
 
 jobs:
   auto-merge:
-    uses: tonyputi/.github/.github/workflows/enable-dependabot-auto-merge.yml@<reviewed-commit-sha>
+    uses: tonyputi/.github/.github/workflows/auto-merge.yml@<reviewed-commit-sha>
     with:
       github_app_id: ${{ vars.GH_APP_ID }}
     secrets:
