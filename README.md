@@ -13,6 +13,7 @@ Centralized reusable workflows and composite actions for `tonyputi` personal acc
 | [`test-php-app`](#test-php-app) | PHP test runner                                   | Active |
 | [`lint`](#lint)                | Lint checks (yaml, shell, dockerfile)              | Active |
 | [`scan-iac`](#scan-iac)        | Security scanning for IaC (Terraform/Ansible/Docker) | Active |
+| [`auto-merge`](#dependabot-auto-merge) | Opt Dependabot PRs into native auto-merge | Available |
 
 ### Actions
 
@@ -85,6 +86,62 @@ jobs:
 | ------------------- | ------------------------------------ |
 | `release_published` | `true` if a new release was created  |
 | `release_version`   | The new version number (e.g., `1.2.3`) |
+
+---
+
+### Dependabot Auto-Merge
+
+Opts Dependabot PRs into native squash auto-merge after a successful PR CI run.
+GitHub still requires the configured checks and human CODEOWNER approval; if both
+are already satisfied, the merge can happen immediately. No approval is submitted.
+
+Before adding the caller, enable repository auto-merge and squash merging, and
+require human CODEOWNER approval and reliable checks on the default branch, with
+no App bypass. Ensure CODEOWNERS covers the repository. The workflow does not
+create or validate these repository settings; Terraform manages them separately.
+
+Add this caller on the consumer's default branch. Replace `CI` with its actual PR
+workflow name and `<reviewed-commit-sha>` with the shared workflow's final reviewed
+merge commit SHA:
+
+```yaml
+name: Dependabot Auto-Merge
+
+on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  auto-merge:
+    uses: tonyputi/.github/.github/workflows/auto-merge.yml@<reviewed-commit-sha>
+    with:
+      github_app_id: ${{ vars.GH_APP_ID }}
+    secrets:
+      github_app_private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+```
+
+`github_app_id` (string input) and `github_app_private_key` (secret) are required,
+using the same interface as the release workflow. Configure them in the **caller**:
+secrets stored in `tonyputi/.github` do not propagate. The App must be installed on
+the caller with Contents and Pull requests write permissions; its temporary token
+is restricted to that repository and those permissions. Do not give it a ruleset
+bypass. An App token, rather than `GITHUB_TOKEN`, lets merges trigger the normal
+[push/release workflows](https://docs.github.com/en/actions/concepts/security/github_token).
+
+The `workflow_run` caller allows access to Actions secrets without running PR code.
+The reusable reads only PR metadata: it ignores failed/non-PR/fork runs, human PRs,
+drafts, closed PRs, other base branches and heads changed since the CI run. It never
+checks out code, downloads artifacts, restores caches or executes PR content.
+All eligible Dependabot update types are included; titles are not rewritten.
+GitHub remains responsible for the current required checks and reviews.
+
+There is no activation flag: adding the caller opts in. To opt out, remove it and
+cancel its active runs. Disable auto-merge separately on already queued PRs.
 
 ---
 
