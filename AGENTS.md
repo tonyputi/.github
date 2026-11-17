@@ -48,6 +48,9 @@ uses: tonyputi/.github/.github/workflows/generate-semantic-release.yml@main
 uses: tonyputi/.github/actions/setup/sops@main
 ```
 
+### Dependabot Branch Updates
+The privileged updater downloads `scripts/update-dependabot-branches.js` from a pinned commit in this repository, never from the caller or a PR head. When changing the script, commit it first, then update the workflow's download SHA to that commit. Do not replace the SHA with a moving ref.
+
 ### GitHub App Authentication
 Semantic release uses a GitHub App (not PAT) for token generation:
 - Input: `github_app_id` (variable `GH_APP_ID`)

@@ -232,8 +232,11 @@ failed checks manually, then rerun via dispatch. To opt out, remove the caller a
 cancel its runs; disabling existing native auto-merge remains a separate action.
 
 Privileged execution is metadata-only: no checkout, PR code, artifacts or caches.
-Actions are pinned, API metadata is never interpolated into shell source, and
-errors do not print API payloads. Live verification must record PR/run URLs for
+The workflow downloads `scripts/update-dependabot-branches.js` from an immutable
+commit in `tonyputi/.github`, never from the caller or a PR head. Download failures
+stop execution before the App token is created. Actions and the script source are
+pinned, API metadata is never interpolated into shell source, and errors do not
+print API payloads. Live verification must record PR/run URLs for
 base advancement, new head/CI, dismissed approval blocking,
 repeated events and native auto-merge after valid checks and human review.
 
