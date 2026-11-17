@@ -14,7 +14,7 @@ Centralized reusable workflows and composite actions for `tonyputi` personal acc
 | [`lint`](#lint)                | Lint checks (yaml, shell, dockerfile)              | Active |
 | [`scan-iac`](#scan-iac)        | Security scanning for IaC (Terraform/Ansible/Docker) | Active |
 | [`auto-merge`](#dependabot-auto-merge) | Opt Dependabot PRs into native auto-merge | Available |
-| [`update-dependabot-branches`](#dependabot-branch-updates) | Update already opted-in Dependabot PR branches | Awaiting pilot |
+| [`update-dependabot-branches`](#dependabot-branch-updates) | Update already opted-in Dependabot PR branches | Enabled; live verification pending |
 
 ### Actions
 
@@ -154,26 +154,30 @@ upstream default branch into eligible PR branches using GitHub's non-destructive
 update-branch API and an `expected_head_sha` guard. It never opts a PR into auto-merge,
 submits approval, merges a PR, force-pushes or changes repository protections.
 
-**Rollout gate:** the shared workflow is not yet adopted here. First review and
-merge the implementation, pilot it in `tonyputi/resume` (issue #41 there), and record
-a two-PR sequence with fresh CI and enforced human review. Only after that evidence
-is recorded, add the caller here under issue #26 and in the separately tracked
-consumers. The pilot and this repository's adoption are still pending.
+This repository enables branch updates through
+`.github/workflows/dependabot-branch-updates.yml`. Its local workflow reference
+resolves to the same commit as the caller, without a moving branch reference.
+It runs on default-branch pushes, every six hours, and manual dispatch.
+
+Live verification is pending: there are currently no open Dependabot PRs to use.
+The next naturally occurring eligible PR will provide evidence of automatic branch
+updates, fresh CI and enforced human review. Other repositories, including
+`tonyputi/resume`, remain separate adoptions after that evidence is recorded.
 
 The caller must have repository-owned Dependabot configuration, native auto-merge,
 strict required checks, human CODEOWNER approval, stale-approval dismissal and no
 App bypass. Keep settings in Terraform. Keep the existing CI-completion auto-merge
 caller; this workflow does not replace it. Required check names must remain stable.
 
-The App needs Contents and Pull requests **write**, plus Checks and Commit statuses
-**read** to detect failed or pending checks. The token is limited to the caller
-repository and these permissions. If the installed App lacks these permissions,
-stop and provision them through the separately authorized credential process; do
-not silently fall back to a PAT or `GITHUB_TOKEN`. Missing credentials fail the run.
+A single repository-scoped App token reads metadata and updates PR branches.
+The installed App needs Contents and Pull requests **write**, plus Checks and
+Commit statuses **read**. Ensure any newly added App permissions are accepted for
+the caller's installation. The temporary token requests only these permissions
+and only the caller repository. Missing credentials or permissions fail the run;
+there is no PAT or `GITHUB_TOKEN` fallback.
 
-For the pilot, add this small caller on `resume`'s default branch, pinned to the
-reviewed shared merge commit. Use the same caller in other consumers only after
-the pilot succeeds:
+Other repositories can adopt this small caller on their default branch after live
+verification here. Pin the shared workflow to its reviewed merged commit:
 
 ```yaml
 name: Update Dependabot Branches
