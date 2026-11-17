@@ -15,7 +15,11 @@ module.exports = async ({github, context, core}) => {
     const pull_number = candidate.number;
     const label = `PR #${pull_number}`;
     try {
-      const {data: pr} = await github.rest.pulls.get({...repo, pull_number});
+      let {data: pr} = await github.rest.pulls.get({...repo, pull_number});
+      for (let attempt = 0; eligible(pr) && pr.mergeable === null && attempt < 3; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        ({data: pr} = await github.rest.pulls.get({...repo, pull_number}));
+      }
       if (!eligible(pr)) continue;
       const {data: branch} = await github.rest.repos.getBranch({...repo, branch: base});
       const baseSha = branch.commit.sha;
@@ -51,8 +55,9 @@ module.exports = async ({github, context, core}) => {
       const {data: current} = await github.rest.pulls.get({...repo, pull_number});
       const {data: currentRepo} = await github.rest.repos.get(repo);
       const {data: currentBase} = await github.rest.repos.getBranch({...repo, branch: base});
+      // PR base.sha can lag behind; guard the actual branch ref instead.
       if (!eligible(current) || current.head.sha !== headSha ||
-          current.base.sha !== baseSha || currentBase.commit.sha !== baseSha ||
+          currentBase.commit.sha !== baseSha ||
           currentRepo.default_branch !== base) {
         core.warning(`${label}: head or base changed; deferred to the next run.`);
         continue;
