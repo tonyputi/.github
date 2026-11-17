@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents working in this repository.
 
 ## Project Overview
 
@@ -33,7 +33,8 @@ actions/
 scripts/
 ├── create-semantic-release-tags.sh       # Tag creation helper
 ├── deploy-laravel-app.sh                 # Laravel deployment script
-└── generate-env.sh                       # .env file generation
+├── generate-env.sh                       # .env file generation
+└── update-dependabot-branches.js          # Metadata-only Dependabot branch updates
 
 release.config.js                         # Semantic-release configuration
 ```
