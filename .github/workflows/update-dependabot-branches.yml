@@ -44,7 +44,7 @@ jobs:
         shell: bash
         run: |
           curl --fail --silent --show-error --max-time 60 \
-            'https://raw.githubusercontent.com/tonyputi/.github/6cf9418bdfd60eddb3afc6752cfbf81c45fb5574/scripts/update-dependabot-branches.js' \
+            'https://raw.githubusercontent.com/tonyputi/.github/202126a0b60ffbb9a3a6e27e51ada39c03d278aa/scripts/update-dependabot-branches.js' \
             --output "$RUNNER_TEMP/update-dependabot-branches.js"
 
       - name: Create a repository-scoped App token
