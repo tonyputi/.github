@@ -1,4 +1,4 @@
-module.exports = async ({github, context, core, updater}) => {
+module.exports = async ({github, context, core}) => {
   const repo = context.repo;
   const {data: repository} = await github.rest.repos.get(repo);
   const base = repository.default_branch;
@@ -57,7 +57,7 @@ module.exports = async ({github, context, core, updater}) => {
         core.warning(`${label}: head or base changed; deferred to the next run.`);
         continue;
       }
-      await updater.rest.pulls.updateBranch({
+      await github.rest.pulls.updateBranch({
         ...repo, pull_number, expected_head_sha: headSha
       });
       core.info(`${label}: branch update accepted; fresh PR checks and valid human review are required.`);

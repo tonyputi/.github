@@ -14,9 +14,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
-  checks: read
-  statuses: read
 
 concurrency:
   group: dependabot-branch-update-${{ github.repository }}
@@ -47,7 +44,7 @@ jobs:
         shell: bash
         run: |
           curl --fail --silent --show-error --max-time 60 \
-            'https://raw.githubusercontent.com/tonyputi/.github/a870f65ce6685143e543ade86115db927698a06c/scripts/update-dependabot-branches.js' \
+            'https://raw.githubusercontent.com/tonyputi/.github/6cf9418bdfd60eddb3afc6752cfbf81c45fb5574/scripts/update-dependabot-branches.js' \
             --output "$RUNNER_TEMP/update-dependabot-branches.js"
 
       - name: Create a repository-scoped App token
@@ -60,15 +57,14 @@ jobs:
           repositories: ${{ github.event.repository.name }}
           permission-contents: write
           permission-pull-requests: write
+          permission-checks: read
+          permission-statuses: read
 
       - name: Update eligible branches serially
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-        env:
-          UPDATE_TOKEN: ${{ steps.app-token.outputs.token }}
         with:
-          github-token: ${{ github.token }}
+          github-token: ${{ steps.app-token.outputs.token }}
           retries: 0
           script: |
             const updateBranches = require(`${process.env.RUNNER_TEMP}/update-dependabot-branches.js`);
-            const updater = new github.constructor({auth: process.env.UPDATE_TOKEN, retry: {enabled: false}});
-            await updateBranches({github, context, core, updater});
+            await updateBranches({github, context, core});

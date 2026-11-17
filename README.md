@@ -169,11 +169,12 @@ strict required checks, human CODEOWNER approval, stale-approval dismissal and n
 App bypass. Keep settings in Terraform. Keep the existing CI-completion auto-merge
 caller; this workflow does not replace it. Required check names must remain stable.
 
-The standard `GITHUB_TOKEN` reads repository/PR metadata, Checks and Commit statuses
-with the read-only permissions below. The repository-scoped App token needs only
-Contents and Pull requests **write**, and is used only for the branch-update call.
-No additional App permissions or PAT are needed. Missing App credentials fail the
-run; `GITHUB_TOKEN` is never used as a fallback for branch writes.
+A single repository-scoped App token reads metadata and updates PR branches.
+The installed App needs Contents and Pull requests **write**, plus Checks and
+Commit statuses **read**. Ensure any newly added App permissions are accepted for
+the caller's installation. The temporary token requests only these permissions
+and only the caller repository. Missing credentials or permissions fail the run;
+there is no PAT or `GITHUB_TOKEN` fallback.
 
 Other repositories can adopt this small caller on their default branch after live
 verification here. Pin the shared workflow to its reviewed merged commit:
@@ -190,9 +191,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
-  checks: read
-  statuses: read
 
 jobs:
   update-branches:
