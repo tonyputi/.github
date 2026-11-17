@@ -205,8 +205,10 @@ The reusable accepts only default-branch pushes (not tags, deletions or PR-head
 pushes), scheduled recovery, and manual dispatch. The broad branch trigger follows
 default-branch renames without hard-coding `main`; the reusable checks the actual
 repository default. Recovery scans run every six hours, subject to GitHub schedule
-delays/disablement, and each run is limited to ten minutes with no API retry or
-polling. Manual dispatch provides recovery if a push or scheduled event is missed.
+delays/disablement, and each run is limited to ten minutes with no API error
+retries. Initially unknown mergeability gets at most three metadata rereads, each
+after a two-second wait, before deferring. Manual dispatch provides recovery if a
+push or scheduled event is missed.
 
 Each run fetches current repository/PR metadata and processes PRs serially. A fixed
 repository concurrency group prevents overlapping updater runs; active runs are
@@ -218,8 +220,9 @@ enabled. Forks, human PRs and PRs not opted in are untouched.
 
 Branches already containing the current base need no update. Conflicts fail the
 run; failed or pending checks and unknown mergeability are reported without an
-update. The workflow checks the current head, base, default branch and eligibility
-again before writing. A changed head/base is deferred; a late head race is rejected
+update. The workflow checks the current head, actual base-branch ref, default
+branch and eligibility again before writing; cached PR `base.sha` metadata is not
+used as the current branch tip. A changed head/base is deferred; a late head race is rejected
 by GitHub's expected-head guard. GitHub does not offer an expected-base guard for
 this endpoint: a default-branch advance immediately after the final read can still
 leave a PR behind. The next push/recovery run handles it; strict native rules block
