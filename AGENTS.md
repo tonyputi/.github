@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents working in this repository.
 
 ## Project Overview
 
@@ -33,7 +33,8 @@ actions/
 scripts/
 ├── create-semantic-release-tags.sh       # Tag creation helper
 ├── deploy-laravel-app.sh                 # Laravel deployment script
-└── generate-env.sh                       # .env file generation
+├── generate-env.sh                       # .env file generation
+└── update-dependabot-branches.js          # Metadata-only Dependabot branch updates
 
 release.config.js                         # Semantic-release configuration
 ```
@@ -46,6 +47,9 @@ All workflows use `workflow_call` trigger. Consuming repositories reference them
 uses: tonyputi/.github/.github/workflows/generate-semantic-release.yml@main
 uses: tonyputi/.github/actions/setup/sops@main
 ```
+
+### Dependabot Branch Updates
+The privileged updater downloads `scripts/update-dependabot-branches.js` from a pinned commit in this repository, never from the caller or a PR head. When changing the script, commit it first, then update the workflow's download SHA to that commit. Do not replace the SHA with a moving ref.
 
 ### GitHub App Authentication
 Semantic release uses a GitHub App (not PAT) for token generation:

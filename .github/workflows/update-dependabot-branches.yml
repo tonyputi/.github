@@ -1,0 +1,70 @@
+name: Update Dependabot Branches
+
+on:
+  workflow_call:
+    inputs:
+      github_app_id:
+        description: 'GitHub App ID'
+        required: true
+        type: string
+    secrets:
+      github_app_private_key:
+        description: 'GitHub App private key (PEM)'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependabot-branch-update-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  update-branches:
+    if: >-
+      (github.event_name == 'push' &&
+       github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
+       github.event.deleted == false) ||
+      github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate credentials
+        shell: bash
+        env:
+          APP_ID: ${{ inputs.github_app_id }}
+          APP_KEY: ${{ secrets.github_app_private_key }}
+        run: |
+          if [[ -z "$APP_ID" || -z "$APP_KEY" ]]; then
+            echo '::error::The caller must supply the GitHub App ID and private key.'
+            exit 1
+          fi
+
+      - name: Download the pinned shared updater
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --max-time 60 \
+            'https://raw.githubusercontent.com/tonyputi/.github/6cf9418bdfd60eddb3afc6752cfbf81c45fb5574/scripts/update-dependabot-branches.js' \
+            --output "$RUNNER_TEMP/update-dependabot-branches.js"
+
+      - name: Create a repository-scoped App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ inputs.github_app_id }}
+          private-key: ${{ secrets.github_app_private_key }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-checks: read
+          permission-statuses: read
+
+      - name: Update eligible branches serially
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          retries: 0
+          script: |
+            const updateBranches = require(`${process.env.RUNNER_TEMP}/update-dependabot-branches.js`);
+            await updateBranches({github, context, core});
